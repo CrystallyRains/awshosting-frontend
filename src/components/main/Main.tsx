@@ -7,7 +7,8 @@ type Todo = {
   completed: boolean;
 };
 
-const API_URL = "http://localhost:5000/api/v1/todo"; // Update with your backend URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1/todo";
+// Update with your backend URL
 
 const Main = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
