@@ -1,13 +1,10 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
 
-type Priority = "low" | "medium" | "high";
-
 type Todo = {
   id: number;
   title: string;
   completed: boolean;
-  priority: Priority;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1/todo";
@@ -16,7 +13,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1
 const Main = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState<string>("");
-  const [priority, setPriority] = useState<Priority>("medium");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "completed" | "active">("all");
@@ -30,12 +26,7 @@ const Main = () => {
         throw new Error("Failed to fetch todos");
       }
       const data = await response.json();
-      // Add priority property if it doesn't exist in the data from backend
-      const todosWithPriority = (data.data || []).map((todo) => ({
-        ...todo,
-        priority: todo.priority || "medium",
-      }));
-      setTodos(todosWithPriority);
+      setTodos(data.data || []);
       setError(null);
     } catch (err) {
       console.error("Error fetching todos:", err);
@@ -46,21 +37,11 @@ const Main = () => {
         try {
           const parsedTodos = JSON.parse(localTodos);
           setTodos(Array.isArray(parsedTodos) 
-            ? parsedTodos.map((item, index) => {
-                if (typeof item === 'string') {
-                  return { 
-                    id: index + 1, 
-                    title: item, 
-                    completed: false,
-                    priority: "medium" as Priority
-                  };
-                } else {
-                  return {
-                    ...item,
-                    priority: item.priority || "medium"
-                  };
-                }
-              }) 
+            ? parsedTodos.map((title, index) => ({ 
+                id: index + 1, 
+                title: typeof title === 'string' ? title : title.title, 
+                completed: typeof title === 'object' ? title.completed || false : false 
+              })) 
             : []
           );
         } catch (e) {
@@ -73,17 +54,14 @@ const Main = () => {
   };
 
   // Add a new todo
-  const addTodo = async (task: string, priority: Priority) => {
+  const addTodo = async (task: string) => {
     try {
-      // Only send the properties expected by the backend
-      const todoForBackend = { task };
-      
       const response = await fetch(API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(todoForBackend),
+        body: JSON.stringify({ task }),
       });
 
       if (!response.ok) {
@@ -91,19 +69,12 @@ const Main = () => {
       }
 
       const data = await response.json();
-      
-      // Add priority to the todo object for frontend use only
-      const newTodo = {
-        ...data.data,
-        priority
-      };
-      
-      setTodos([...todos, newTodo]);
+      setTodos([...todos, data.data]);
       
       // Also update localStorage as backup
       localStorage.setItem(
         "todos", 
-        JSON.stringify([...todos, newTodo])
+        JSON.stringify([...todos, data.data])
       );
       
       return true;
@@ -115,8 +86,7 @@ const Main = () => {
       const newTodo = { 
         id: todos.length + 1, 
         title: task, 
-        completed: false,
-        priority
+        completed: false 
       };
       setTodos([...todos, newTodo]);
       localStorage.setItem(
@@ -146,7 +116,7 @@ const Main = () => {
     e.preventDefault();
     if (!input.trim()) return;
     
-    await addTodo(input, priority);
+    await addTodo(input);
     setInput("");
   };
 
@@ -157,165 +127,126 @@ const Main = () => {
     return true;
   });
 
-  // Sort todos by priority (high > medium > low)
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-    const priorityOrder = { high: 3, medium: 2, low: 1 };
-    return priorityOrder[b.priority] - priorityOrder[a.priority];
-  });
-
   useEffect(() => {
     fetchTodos();
   }, []);
 
-  const getPriorityColor = (priority: Priority) => {
-    switch (priority) {
-      case "high": return "bg-red-100 border-l-4 border-red-500";
-      case "medium": return "bg-yellow-100 border-l-4 border-yellow-500";
-      case "low": return "bg-green-100 border-l-4 border-green-500";
-      default: return "bg-blue-100";
-    }
-  };
-
   return (
-    <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-lg">
-      <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">My Todo App</h1>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="flex gap-2 mb-3">
-          <input
-            placeholder="Enter todo"
-            className="border flex-1 p-2 rounded shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 outline-none"
-            name="todo"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="p-2 bg-blue-500 rounded text-white hover:bg-blue-600 transition-colors duration-200 shadow-sm"
-          >
-            Add
-          </button>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">My Todo List</h1>
         
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-gray-700 font-medium">Priority:</label>
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 text-sm text-red-700">
+            <p>{error}</p>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="mb-6">
           <div className="flex gap-2">
+            <input
+              placeholder="What needs to be done?"
+              className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              name="todo"
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+            />
             <button
-              type="button"
-              onClick={() => setPriority("low")}
-              className={`px-3 py-1 rounded ${
-                priority === "low" 
-                  ? "bg-green-500 text-white" 
-                  : "bg-green-100 text-green-800"
-              }`}
+              type="submit"
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
             >
-              Low
+              Add
             </button>
-            <button
-              type="button"
-              onClick={() => setPriority("medium")}
-              className={`px-3 py-1 rounded ${
-                priority === "medium" 
-                  ? "bg-yellow-500 text-white" 
-                  : "bg-yellow-100 text-yellow-800"
+          </div>
+        </form>
+        
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex rounded-md shadow-sm">
+            <button 
+              className={`px-4 py-2 text-sm font-medium rounded-l-lg border ${
+                filter === "all" 
+                  ? "bg-blue-50 text-blue-700 border-blue-300" 
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               }`}
+              onClick={() => setFilter("all")}
             >
-              Medium
+              All
             </button>
-            <button
-              type="button"
-              onClick={() => setPriority("high")}
-              className={`px-3 py-1 rounded ${
-                priority === "high" 
-                  ? "bg-red-500 text-white" 
-                  : "bg-red-100 text-red-800"
+            <button 
+              className={`px-4 py-2 text-sm font-medium border-t border-b ${
+                filter === "active" 
+                  ? "bg-blue-50 text-blue-700 border-blue-300" 
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               }`}
+              onClick={() => setFilter("active")}
             >
-              High
+              Active
+            </button>
+            <button 
+              className={`px-4 py-2 text-sm font-medium rounded-r-lg border ${
+                filter === "completed" 
+                  ? "bg-blue-50 text-blue-700 border-blue-300" 
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+              onClick={() => setFilter("completed")}
+            >
+              Completed
             </button>
           </div>
         </div>
-      </form>
-      
-      <div className="flex justify-center mb-4">
-        <div className="flex rounded-md overflow-hidden shadow-sm">
-          <button 
-            className={`px-3 py-1 ${filter === "all" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
-            onClick={() => setFilter("all")}
-          >
-            All
-          </button>
-          <button 
-            className={`px-3 py-1 ${filter === "active" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
-            onClick={() => setFilter("active")}
-          >
-            Active
-          </button>
-          <button 
-            className={`px-3 py-1 ${filter === "completed" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
-            onClick={() => setFilter("completed")}
-          >
-            Completed
-          </button>
-        </div>
-      </div>
-      
-      {loading ? (
-        <div className="flex justify-center py-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedTodos.length > 0 ? (
-            sortedTodos.map((todo) => (
-              <div
-                className={`p-4 rounded-md shadow-sm ${getPriorityColor(todo.priority)}`}
-                key={todo.id}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <input 
-                      type="checkbox" 
-                      checked={todo.completed}
-                      onChange={() => toggleTodoCompletion(todo.id)}
-                      className="h-5 w-5 rounded"
-                    />
-                    <p className={`font-medium break-all ${todo.completed ? "line-through text-gray-500" : "text-gray-700"}`}>
-                      {todo.title}
-                    </p>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs px-2 py-1 rounded mr-2">
-                      {todo.priority.charAt(0).toUpperCase() + todo.priority.slice(1)}
-                    </span>
-                    <button 
-                      onClick={() => deleteTodo(todo.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredTodos.length > 0 ? (
+              filteredTodos.map((todo) => (
+                <div
+                  key={todo.id}
+                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-150"
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={todo.completed}
+                    onChange={() => toggleTodoCompletion(todo.id)}
+                    className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <p 
+                    className={`ml-3 flex-1 text-gray-700 ${
+                      todo.completed ? "line-through text-gray-400" : ""
+                    }`}
+                  >
+                    {todo.title}
+                  </p>
+                  <button 
+                    onClick={() => deleteTodo(todo.id)}
+                    className="ml-2 text-gray-400 hover:text-red-500"
+                    aria-label="Delete todo"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-gray-500">No todos to display</p>
+                <p className="text-sm text-gray-400 mt-1">Add a new todo to get started</p>
               </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 py-4">No todos to display</p>
-          )}
-        </div>
-      )}
-      
-      {todos.length > 0 && (
-        <p className="text-center text-gray-500 text-sm mt-4">
-          {todos.filter(todo => todo.completed).length} of {todos.length} tasks completed
-        </p>
-      )}
+            )}
+          </div>
+        )}
+        
+        {todos.length > 0 && (
+          <div className="mt-6 text-center text-sm text-gray-500">
+            <p>{todos.filter(todo => todo.completed).length} of {todos.length} completed</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
