@@ -145,7 +145,7 @@ const Main = () => {
         <form onSubmit={handleSubmit} className="mb-6">
           <div className="flex gap-2">
             <input
-              placeholder="What needs to be repaired?"
+              placeholder="What needs to be Added?"
               className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
               name="repair"
               type="text"
@@ -191,7 +191,7 @@ const Main = () => {
               }`}
               onClick={() => setFilter("completed")}
             >
-              Repaired
+              Added
             </button>
           </div>
         </div>
