@@ -30,7 +30,7 @@ const Main = () => {
       setError(null);
     } catch (err) {
       console.error("Error fetching repairs:", err);
-      setError("Failed to load to-do items. Using local storage as fallback.");
+      setError("Failed to load to-do items. Using local storage  fallback.");
       // Fallback to localStorage if the API fails
       const localRepairs = localStorage.getItem("repairs");
       if (localRepairs) {
