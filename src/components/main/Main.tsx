@@ -30,7 +30,7 @@ const Main = () => {
       setError(null);
     } catch (err) {
       console.error("Error fetching repairs:", err);
-      setError("Failed to load repair items. Using local storage as fallback.");
+      setError("Failed to load to-do items. Using local storage as fallback.");
       // Fallback to localStorage if the API fails
       const localRepairs = localStorage.getItem("repairs");
       if (localRepairs) {
@@ -80,7 +80,7 @@ const Main = () => {
       return true;
     } catch (err) {
       console.error("Error adding repair item:", err);
-      setError("Failed to add repair item. Added to local storage only.");
+      setError("Failed to add to-do item. Added to local storage only.");
       
       // Fallback to localStorage
       const newRepair = { 
@@ -134,7 +134,7 @@ const Main = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Repair List</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">To-do List</h1>
         
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 text-sm text-red-700">
